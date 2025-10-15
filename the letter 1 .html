@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mixed‑Script Homoglyph Typing</title>
+<style>
+  :root{ --bg:#0f1218; --panel:#161b25; --text:#ecf0f6; --muted:#9aa6b2; --accent:#7bdff6; --accent2:#5b8cff; --r:14px; }
+  *{ box-sizing:border-box }
+  body{ margin:0; background:var(--bg); color:var(--text); font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Noto Sans, Arial; }
+  header{ position:sticky; top:0; background:rgba(22,27,37,.7); backdrop-filter: blur(10px); border-bottom:1px solid rgba(255,255,255,.08); z-index:10; }
+  .wrap{ max-width:1100px; margin:auto; padding: clamp(14px,2vw,24px); }
+  .top{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .logo{ width:28px; height:28px; border-radius:9px; background: conic-gradient(from 210deg, var(--accent), var(--accent2)); box-shadow: 0 4px 16px rgba(123,223,246,.55); }
+  .brand{ display:flex; gap:10px; align-items:center; font-weight:700; }
+  main{ padding-top:12px; }
+  .panel{ background:var(--panel); border:1px solid rgba(255,255,255,.08); border-radius:var(--r); padding:16px; }
+  .grid{ display:grid; gap:14px; grid-template-columns:1fr 1fr; }
+  @media (max-width:900px){ .grid{ grid-template-columns:1fr; } }
+  .area{ display:flex; flex-direction:column; gap:8px; }
+  .label{ color:var(--muted); font-size:14px; }
+  textarea, pre{
+    width:100%; min-height:260px; padding:12px 14px; border-radius:12px;
+    border:1px solid rgba(255,255,255,.08); background:#0f141d; color:var(--text);
+    font-family: ui-monospace, Menlo, Consolas, "Cascadia Mono", "Roboto Mono", monospace;
+    font-size:16px; line-height:1.6; outline:none;
+  }
+  textarea:focus{ border-color: rgba(123,223,246,.45); box-shadow: 0 0 0 4px rgba(123,223,246,.14); }
+  pre{ white-space:pre-wrap; word-break:break-word; margin:0; background:#0e141e; }
+  .controls{ display:flex; gap:10px; flex-wrap:wrap; }
+  .btn{ padding:10px 14px; border-radius:10px; background:#11182a; color:var(--text); border:1px solid rgba(255,255,255,.1); cursor:pointer; }
+  .btn:hover{ background:#141d31; }
+  .note{ color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap top">
+    <div class="brand"><span class="logo" aria-hidden="true"></span> Mixed‑Script Look‑alikes</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="panel">
+    <p class="note">Type English on the left; the right shows a diverse set of visually similar letters (Hangul + Greek + Cyrillic + Armenian + Georgian + special Latin). Your rule: e → ㅌ.</p>
+    <div class="grid">
+      <div class="area">
+        <div class="label">Input (English)</div>
+        <textarea id="src" placeholder="Try: The quick brown fox jumps over the lazy dog."></textarea>
+        <div class="controls">
+          <button class="btn" id="clear">Clear</button>
+          <button class="btn" id="copy">Copy Output</button>
+          <span class="note">Balanced, not Korea‑only; tweak the map below if you want more/less of a script.</span>
+        </div>
+      </div>
+      <div class="area">
+        <div class="label">Output (Mixed scripts)</div>
+        <pre id="dst" aria-live="polite"></pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+/*
+Mixed mapping philosophy:
+- Use Hangul where the silhouette strongly suggests the Latin letter.
+- Mix Greek/Cyrillic/Armenian/Georgian/special Latin to avoid monotony.
+- Keep punctuation mostly literal for readability.
+- Per request, 'e' => Hangul tieut ㅌ (U+314C).
+Note: Rendering varies by font; feel free to swap entries to taste.
+*/
+const MAP = {
+  // Lowercase vowels
+  'a':'ɑ',   // Latin alpha-like a (distinct but readable)
+  'e':'ㅌ',  // requested: e maps to Hangul tieut
+  'i':'ι',   // Greek iota
+  'o':'ㅁ',   // Armenian o (rounder than Latin o)
+  'u':'ս',   // Armenian se gives cup-like shape; alt Hangul ㅠ
+
+  // Lowercase consonants
+  'b':'ь',   // Cyrillic soft sign echoes b-stem in many fonts
+  'c':'ㄷ',   // Greek final sigma looks like c
+  'd':'ԁ',   // Cyrillic de form
+  'f':'ƒ',   // Latin f with hook
+  'g':'ɡ',   // Latin single-storey g
+  'h':'һ',   // Cyrillic shha
+  'j':'ʝ',   // Latin small j-like (Greek gamma variant feel)
+  'k':'κ',   // Greek kappa
+  'l':'ㅣ',   // Roman numeral fifty looks like tall l
+  'm':'ᗰ',   // Latin m with dot for visible difference
+  'n':'几',   // Armenian vo resembles n
+  'p':'卩',   // Greek rho looks like p
+  'q':'զ',   // Armenian za suggests q-tail
+  'r':'Ր',   // Armenian capital Re as distinctive r-ish shape
+  's':'ʂ',   // Latin s with tail; alt Cyrillic dze ѕ
+  't':'†',  // Hangul tieut evokes T
+  'v':'٧',   // Arabic-Indic 7 shape resembles v
+  'w':'ω',   // Greek omega as w-like
+  'x':'乂',   // Cyrillic ha looks like x
+  'y':'と',   // Georgian qari resembles y-tail
+  'z':'ʐ',   // Latin z with tail; alt Greek zeta ζ
+
+  // Uppercase
+  'A':'卂',   // Greek lambda evokes A
+  'B':'ß',   // German eszett gives distinctive double-curve
+  'C':'ㄷ',   // Greek lunate sigma looks like C
+  'D':'Դ',   // Armenian Da resembles D
+  'E':'ㅌ',   // Greek Xi gives strong E-like bars
+  'F':'Ғ',   // Cyrillic ghe with stroke
+  'G':'Ꮆ',   // Georgian letter looks like curly G; swap if too exotic
+  'H':'ㅐ',   // Greek Eta with tonos (distinct H-bar look)
+  'I':'工',   // Roman numeral one
+  'J':'Ј',   // Cyrillic Je
+  'K':'Κ',   // Greek Kappa
+  'L':'ᒪ',   // Canadian syllabics letter for visible L-like
+  'M':'爪',   // Cyrillic Em
+  'N':'Ν',   // Greek Nu
+  'O':'O',   // Armenian capital O
+  'P':'尸',   // Greek Rho resembles P
+  'Q':'Ⴍ',   // Georgian On with tail feel
+  'R':'尺',   // Cyrillic Ya gives a dramatic R-like
+  'S':'Ѕ',   // Cyrillic Dze
+  'T':'ㄒ',   // Greek Tau
+  'U':'Ս',   // Armenian Se gives U-like bowl
+  'V':'Ѵ',   // Cyrillic Izhitsa looks like V
+  'W':'Ш',   // Cyrillic Sha as W
+  'X':'乂',   // Greek Chi
+  'Y':'ㄚ',   // Cyrillic U with diaeresis evokes Y-fork
+  'Z':'Ƶ',   // Z with stroke for visibility
+
+  // Digits (visible, diverse)
+  '0':'⓪',   // circled zero
+  '1':'𝟙',   // math bold 1
+  '2':'২',   // Bengali 2
+  '3':'З',   // Cyrillic Ze
+  '4':'४',   // Devanagari 4
+  '5':'५',   // Devanagari 5
+  '6':'৬',   // Bengali 6
+  '7':'७',   // Devanagari 7
+  '8':'৮',   // Bengali 8
+  '9':'९',   // Devanagari 9
+
+  // Whitespace
+  ' ':' ', '\n':'\n', '\t':'\t'
+};
+
+// Punctuation: mostly pass through for legibility
+const passthrough = new Set([',','.','!','?',';',':','\'','"','-','—','–','_','(',')','[',']','{','}','/','\\','@','#','$','%','^','&','*','+','=','<','>','`','~']);
+
+const src = document.getElementById('src');
+const dst = document.getElementById('dst');
+document.getElementById('clear').addEventListener('click', ()=>{ src.value=''; render(); });
+document.getElementById('copy').addEventListener('click', async ()=>{
+  try{ await navigator.clipboard.writeText(dst.textContent); }catch(e){ alert('Copy failed'); }
+});
+
+function mapChar(ch){
+  if (MAP.hasOwnProperty(ch)) return MAP[ch];
+  if (passthrough.has(ch)) return ch;
+  return ch;
+}
+function transform(t){ let out=''; for (const ch of t) out += mapChar(ch); return out; }
+function render(){ dst.textContent = transform(src.value); }
+
+src.addEventListener('input', render);
+// Seed example
+src.value = "The quick brown fox jumps over the lazy dog.\nMixed scripts, with e → ㅌ, not too much Korean.";
+render();
+</script>
+</body>
+</html>

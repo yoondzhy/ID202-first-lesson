@@ -1,172 +1,262 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="wodth=device-width, initial-scale=1.0">
-	<title>Japanese style calligraphy writing</title>
-	<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
-	<style>
-		body {
-		background-image: url('background.jpeg');
-		background-size: cover;
-		background-position: center;
-		background-repeat: no-repeat;
-		height: 100vh;
-		margin: 0;
-		overflow: hidden;
-		}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Japanese Style Calligraphy Writing</title>
+  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
 
-		.letter {
-			position: absolute;
-			font-family: 'Great Vibes', cursive;
-			font-size: 64px;
-			color: rgba(20, 20, 20, 0.8);
-			transition: all 1.5s ease-out;
-			pointer-events:none;
-		}
+  <!-- html2canvas: allows saving screenshots -->
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-		#brush {
-			position: fixed;
-			width:45px;
-			height: 45px;
-			background-image: url('feather.png');
-			background-size: contain;
-			background-repeat: no-repeat;
-			transform: translate(-50%, -50%) rotate(-30deg);
-			pointer-events: none;
-			z-index: 1000;
-		}
+  <style>
+    body {
+      /* Default background before mood selection */
+      background-image: url('background.jpeg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      height: 100vh;
+      margin: 0;
+      overflow: hidden;
+      transition: background-image 1s ease;
+      font-family: 'Great Vibes', cursive;
+    }
 
-		#drawCanvas {
-			position: fixed;
-			top: 0;
-			left: 0;
-			width: 100vw;
-			height: 100vh;
-			z-index:0;
-		}
-	</style>
+    .letter {
+      position: absolute;
+      font-family: 'Great Vibes', cursive;
+      font-size: 64px;
+      color: rgba(20, 20, 20, 0.8);
+      transition: all 1.5s ease-out;
+      pointer-events: none;
+    }
+
+    #brush {
+      position: fixed;
+      width: 45px;
+      height: 45px;
+      background-image: url('feather.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      pointer-events: none;
+      z-index: 1000;
+    }
+
+    #drawCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+    }
+
+    /* Mood selection screen styling */
+    #mood-screen {
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.95);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      transition: opacity 1s ease;
+    }
+
+    #mood-screen h1 {
+      font-size: 2.5em;
+      margin-bottom: 30px;
+      color: #333;
+    }
+
+    .mood-button {
+      margin: 10px;
+      padding: 15px 30px;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.2em;
+      cursor: pointer;
+      font-family: 'Great Vibes', cursive;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .mood-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Mood button colors */
+    .strength { background-color: #c3d9ff; }
+    .peace { background-color: #ffd7e0; }
+    .renewal { background-color: #c6f1c1; }
+    .self-exploration { background-color: #e1d0ff; }
+
+
+    /* Falling sakura  */
+    .sakura {
+      position: absolute;
+      width: 200px;
+      height: 200px;
+      background-image: url('sakura.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      animation: fall 10s linear infinite;
+      opacity: 0.8;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    @keyframes fall {
+      0% { transform: translateY(-10%) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
+    }
+  </style>
 </head>
 
 <body>
-	<canvas id="drawCanvas"></canvas>
-	<div id="brush"></div>
+  <!-- Mood Selection Overlay -->
+  <div id="mood-screen">
+    <h1>What do you feel today?</h1>
+    <div>
+      <button class="mood-button strength" onclick="selectMood('strength')">Strength</button>
+      <button class="mood-button peace" onclick="selectMood('peace')">Peace</button>
+      <button class="mood-button renewal" onclick="selectMood('renewal')">Renewal</button>
+      <button class="mood-button self-exploration" onclick="selectMood('self-exploration')">Self-Exploration</button>
+    </div>
+  </div>
 
-	<script>
-		const maxRows = 10;
-		const columnWidth = 120;
-		const rowHeight = 80;
-		const topMargin = 100;
-		let maxCols = Math.floor(window.innerWidth / columnWidth) - 1;
-		let letters = [];
-		let col = 0;
-		let row = 0;
-
-		document.addEventListener('keydown', (event) => {
-			if (event.key === 'Backspace') {
-				event.preventDefault();
-				const last = letters.pop();
-				if (last) last.remove();
-
-				if(row>0) {
-					row--;
-				} else if (col>0) {
-					col--;
-					row = maxRows - 1
-				}
-				return;
-			}
-			if (event.key === "Enter") {
-				event.preventDefault();
-				col++;
-				row = 0;
-				if (col > maxCols) {
-					col = maxCols;
-				}
-				return;
-			}
-
-			if (event.key.length !==1) return;
-			if (col > maxCols) return;
-
-			const span = document.createElement('span');
-			span.classList.add('letter');
-			span.textContent = event.key;
-
-			span.style.left = Math.random() * window.innerWidth + 'px';
-			span.style.top = Math.random() * window.innerHeight + 'px';
-
-			document.body.appendChild(span);
-			letters.push(span);
-
-			const columnX = window.innerWidth - (col + 1) * columnWidth;
-			const rowY = topMargin + row * rowHeight;
-
-			requestAnimationFrame(() => {
-				span.style.left = columnX + 'px';
-				span.style.top = rowY + 'px';
-			});
-
-			row++; 
-			if (row >= maxRows) {
-				row = 0;
-				col++;
-			}
- 		});
-
- 		const canvas = document.getElementById('drawCanvas');
- 		const ctx = canvas.getContext('2d');
- 		const brush = document.getElementById('brush');
- 		let drawing = false;
- 		let prevX = 0, prevY = 0;
-	    function resizeCanvas() {
-      		canvas.width = window.innerWidth;
-      		canvas.height = window.innerHeight;
-    	}
-    	window.addEventListener('resize', resizeCanvas);
-    	resizeCanvas();
-
-    	document.addEventListener('mousemove', (e) => {
-      		brush.style.left = e.clientX + 'px';
-      		brush.style.top = e.clientY + 'px';
-
-      	if (drawing) {
-	        const now = Date.now();
-	        const deltaTime = now - prevTime;
-	        const dx = e.clientX - prevX;
-	        const dy = e.clientY - prevY;
-	        const speed = Math.sqrt(dx * dx + dy * dy) / deltaTime;
-
-	        // Brush thickness varies inversely with speed
-	        const thickness = Math.max(2, 20 - speed * 20);
-	        
-	        ctx.beginPath();
-	        ctx.moveTo(prevX, prevY);
-	        ctx.lineTo(e.clientX, e.clientY);
-	        ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
-	        ctx.lineWidth = thickness;
-	        ctx.lineCap = 'round';
-	        ctx.lineJoin = 'round';
-	        ctx.stroke();
-
-	        prevX = e.clientX;
-	        prevY = e.clientY;
-	        prevTime = now;
-	      }
-	    });
-
-	    document.addEventListener('mousedown', (e) => {
-	      drawing = true;
-	      prevX = e.clientX;
-	      prevY = e.clientY;
-	      prevTime = Date.now();
-	    });
-	    document.addEventListener('mouseup', () => drawing = false);
+  <canvas id="drawCanvas"></canvas>
+  <div id="brush"></div>
 
 
- 		window.addEventListener("resize", () => {
- 			maxCols = Math.floow(window.innerWidth / columnWidth) - 1;
- 		});
- 	</script>
+  <script>
+    /* ------------------ DRAWING AND TYPING LOGIC ------------------ */
+    const maxRows = 10;
+    const columnWidth = 120;
+    const rowHeight = 80;
+    const topMargin = 100;
+    let maxCols = Math.floor(window.innerWidth / columnWidth) - 1;
+    let letters = [];
+    let col = 0;
+    let row = 0;
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Backspace') {
+        event.preventDefault();
+        const last = letters.pop();
+        if (last) last.remove();
+        if (row > 0) row--;
+        else if (col > 0) { col--; row = maxRows - 1; }
+        return;
+      }
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        col++;
+        row = 0;
+        if (col > maxCols) col = maxCols;
+        return;
+      }
+
+      if (event.key.length !== 1) return;
+      if (col > maxCols) return;
+
+      const span = document.createElement('span');
+      span.classList.add('letter');
+      span.textContent = event.key;
+      span.style.left = Math.random() * window.innerWidth + 'px';
+      span.style.top = Math.random() * window.innerHeight + 'px';
+      document.body.appendChild(span);
+      letters.push(span);
+
+      const columnX = window.innerWidth - (col + 1) * columnWidth;
+      const rowY = topMargin + row * rowHeight;
+
+      requestAnimationFrame(() => {
+        span.style.left = columnX + 'px';
+        span.style.top = rowY + 'px';
+      });
+
+      row++;
+      if (row >= maxRows) { row = 0; col++; }
+    });
+
+    const canvas = document.getElementById('drawCanvas');
+    const ctx = canvas.getContext('2d');
+    const brush = document.getElementById('brush');
+    let drawing = false;
+    let prevX = 0, prevY = 0, prevTime = 0;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    document.addEventListener('mousemove', (e) => {
+      brush.style.left = e.clientX + 'px';
+      brush.style.top = e.clientY + 'px';
+      if (drawing) {
+        const now = Date.now();
+        const dx = e.clientX - prevX;
+        const dy = e.clientY - prevY;
+        const deltaTime = now - prevTime;
+        const speed = Math.sqrt(dx * dx + dy * dy) / deltaTime;
+        const thickness = Math.max(2, 20 - speed * 20);
+
+        ctx.beginPath();
+        ctx.moveTo(prevX, prevY);
+        ctx.lineTo(e.clientX, e.clientY);
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.85)';
+        ctx.lineWidth = thickness;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+
+        prevX = e.clientX;
+        prevY = e.clientY;
+        prevTime = now;
+      }
+    });
+
+    document.addEventListener('mousedown', (e) => {
+      drawing = true;
+      prevX = e.clientX;
+      prevY = e.clientY;
+      prevTime = Date.now();
+    });
+    document.addEventListener('mouseup', () => drawing = false);
+
+    /* ------------------ NEW: Mood Selection Logic (background images) ------------------ */
+    function selectMood(mood) {
+      const screen = document.getElementById('mood-screen');
+      screen.style.opacity = 0;
+      setTimeout(() => screen.style.display = 'none', 1000);
+
+      const bgImages = {
+        strength: 'bgblue.png',
+        peace: 'background.jpeg',
+        renewal: 'bggreen.png',
+        'self-exploration': 'bgpurple.png'
+      };
+
+      document.body.style.backgroundImage = `url('${bgImages[mood]}')`;
+
+      // Add falling sakura petals aesthetic
+      for (let i = 0; i < 10; i++) {
+        const petal = document.createElement('div');
+        petal.classList.add('sakura');
+        petal.style.left = Math.random() * 100 + 'vw';
+        petal.style.animationDelay = Math.random() * 5 + 's';
+        petal.style.animationDuration = 6 + Math.random() * 6 + 's';
+        document.body.appendChild(petal);
+      }
+    }
+
+  
+  </script>
 </body>
 </html>
